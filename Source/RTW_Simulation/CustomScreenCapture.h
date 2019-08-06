@@ -36,11 +36,13 @@ public:
 		float field_of_view;
 
 	UPROPERTY(EditAnywhere, Category = "Output Information")
+		float frames_per_second;
+
+	UPROPERTY(EditAnywhere, Category = "Output Information")
 		FString outputFolderPath;
 
 	UPROPERTY(EditAnywhere, Category = "Stereo Setup (X = Front, Y = Right, Z = Top)")
 		FVector colorCameraOffset;
-
 protected:
 	// Member variables
 	

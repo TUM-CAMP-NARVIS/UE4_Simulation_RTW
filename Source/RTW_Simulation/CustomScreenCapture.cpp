@@ -1,14 +1,16 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "CustomScreenCapture.h"
+#include "RTW_WorldSettings.h"
 
-#include <filesystem>
 #include <fstream>
 
 #if __cplusplus < 201703L // If the version of C++ is less than 17
 	// It was still in the experimental:: namespace
+#include <experimental/filesystem>
 namespace fs = std::experimental::filesystem;
 #else
+#include <filesystem>
 namespace fs = std::filesystem;
 #endif
 
@@ -103,6 +105,8 @@ void ACustomScreenCapture::BeginPlay()
 	// Temporary buffer
 	char targetBuffer[10];
 
+	std::ofstream metaData;
+	
 	// World location, as string
 	std::string strPosX;
 	std::string strPosY;
@@ -148,19 +152,29 @@ void ACustomScreenCapture::BeginPlay()
 		baseFilenameDepth.append("/");
 	}
 
+	ARTW_WorldSettings* tempPtr = reinterpret_cast<ARTW_WorldSettings*>(GetWorldSettings());
+	sprintf(targetBuffer, "%.3f", tempPtr->frames_per_second);
+	std::string strFPS = std::string(targetBuffer);
+
+	metaData.open(baseFilenameDepth + "Metadata.txt");
+
+	metaData << "Frames per second: " << strFPS << "\n";
+
+	metaData << "Depth Position X: " << strPosX << "\n";
+	metaData << "Depth Position Y: " << strPosY << "\n";
+	metaData << "Depth Position Z: " << strPosZ << "\n";
+	
+	metaData << "Depth Rotation Pitch: " << strRotPitch << "\n";
+	metaData << "Depth Rotation Roll: " << strRotRoll << "\n";
+	metaData << "Depth Rotation Yaw: " << strRotYaw << "\n";
+
 	baseFilenameDepth += std::string("image");
-	baseFilenameDepth += std::string("_X_") + strPosX;
-	baseFilenameDepth += std::string("_Y_") + strPosY;
-	baseFilenameDepth += std::string("_Z_") + strPosZ;
-	baseFilenameDepth += std::string("_Pitch_") + strRotPitch;
-	baseFilenameDepth += std::string("_Roll_") + strRotRoll;
-	baseFilenameDepth += std::string("_Yaw_") + strRotYaw;
 	baseFilenameDepth += std::string("_number_");
 
 	location = OurCameraColor->GetComponentLocation();
 
 	sprintf(targetBuffer, "%.3f", location.X);
-	strPosX = std::string(targetBuffer);
+	strPosX += std::string(targetBuffer);
 
 	sprintf(targetBuffer, "%.3f", location.Y);
 	strPosY = std::string(targetBuffer);
@@ -192,13 +206,18 @@ void ACustomScreenCapture::BeginPlay()
 	}
 
 	baseFilenameColor += std::string("image");
-	baseFilenameColor += std::string("_X_") + strPosX;
-	baseFilenameColor += std::string("_Y_") + strPosY;
-	baseFilenameColor += std::string("_Z_") + strPosZ;
-	baseFilenameColor += std::string("_Pitch_") + strRotPitch;
-	baseFilenameColor += std::string("_Roll_") + strRotRoll;
-	baseFilenameColor += std::string("_Yaw_") + strRotYaw;
 	baseFilenameColor += std::string("_number_");
+
+	metaData << "Color Position X: " << strPosX << "\n";
+	metaData << "Color Position Y: " << strPosY << "\n";
+	metaData << "Color Position Z: " << strPosZ << "\n";
+
+	metaData << "Color Rotation Pitch: " << strRotPitch << "\n";
+	metaData << "Color Rotation Roll: " << strRotRoll << "\n";
+	metaData << "Color Rotation Yaw: " << strRotYaw;
+
+	metaData.close();
+
 #pragma endregion
 }
 
@@ -231,7 +250,7 @@ void ACustomScreenCapture::SaveTextureDepthmap()
 		std::string fileName = baseFilenameDepth;
 		std::string sCounter = std::to_string(counterImage);
 		std::string new_counterString = std::string(6 - sCounter.length(), '0') + sCounter;
-		fileName += new_counterString + std::string(".raw16");
+		fileName += new_counterString + std::string(".raw32f");
 		std::ofstream targetFileDepth(fileName, std::ofstream::binary);
 		
 		depthVector.resize(buffer16.Num());
