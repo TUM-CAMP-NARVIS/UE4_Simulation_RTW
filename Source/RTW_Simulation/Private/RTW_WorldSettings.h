@@ -16,6 +16,6 @@ class ARTW_WorldSettings : public AWorldSettings
 
 public:
 	ARTW_WorldSettings();
-	UPROPERTY(EditAnywhere, Category = "Simulation Settings")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Simulation Settings")
 		float frames_per_second;
 };

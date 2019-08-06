@@ -248,9 +248,7 @@ void ACustomScreenCapture::SaveTextureDepthmap()
 		RenderTargetResource->ReadFloat16Pixels(buffer16);
 
 		std::string fileName = baseFilenameDepth;
-		std::string sCounter = std::to_string(counterImage);
-		std::string new_counterString = std::string(6 - sCounter.length(), '0') + sCounter;
-		fileName += new_counterString + std::string(".raw32f");
+		fileName += sCounter + std::string(".raw32f");
 		std::ofstream targetFileDepth(fileName, std::ofstream::binary);
 		
 		depthVector.resize(buffer16.Num());
