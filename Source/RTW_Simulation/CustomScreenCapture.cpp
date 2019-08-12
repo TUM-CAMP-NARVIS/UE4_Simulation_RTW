@@ -216,7 +216,6 @@ void ACustomScreenCapture::BeginPlay()
 	metaData.open(basePathFolder + "Metadata.json");
 	metaData << j.dump(2);
 	metaData.close();
-
 #pragma endregion
 }
 
