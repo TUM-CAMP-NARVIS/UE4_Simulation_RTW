@@ -46,7 +46,8 @@ public:
 protected:
 	// Member variables
 	
-	uint32_t internResolution;  // Textures need to be power of 2
+	uint32_t internResolutionX;  // Textures need to be power of 2
+	uint32_t internResolutionY;  // Textures need to be power of 2
 
 	// Current counter of image
 	uint32_t counterImage;
@@ -54,6 +55,7 @@ protected:
 	// Complete compacted base filename
 	std::string baseFilenameDepth;
 	std::string baseFilenameColor;
+	std::string basePathFolder;
 	std::string sCounter;
 
 	UTextureRenderTarget2D* renderTargetDepth;

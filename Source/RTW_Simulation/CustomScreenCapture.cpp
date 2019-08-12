@@ -2,6 +2,7 @@
 
 #include "CustomScreenCapture.h"
 #include "RTW_WorldSettings.h"
+#include "nlohmann/json.hpp"
 
 #include <fstream>
 
@@ -14,6 +15,8 @@ namespace fs = std::experimental::filesystem;
 namespace fs = std::filesystem;
 #endif
 
+using json = nlohmann::json;
+
 // Sets default values
 ACustomScreenCapture::ACustomScreenCapture()
 	: resolutionX(1024)
@@ -24,6 +27,7 @@ ACustomScreenCapture::ACustomScreenCapture()
 	, counterImage(0)
 	, baseFilenameDepth("")
 	, baseFilenameColor("")
+	, basePathFolder("")
 {
 	PrimaryActorTick.bCanEverTick = true;
 
@@ -39,17 +43,6 @@ ACustomScreenCapture::ACustomScreenCapture()
 	OurCameraColor->SetupAttachment(RootComponent);
 
 	// Resolution has to be a power of 2. This code finds the lowest RxR resolution which has more pixel than set
-	uint32_t higher = resolutionX > resolutionY ? resolutionX : resolutionY;
-
-	higher--;
-	higher |= higher >> 1;
-	higher |= higher >> 2;
-	higher |= higher >> 4;
-	higher |= higher >> 8;
-	higher |= higher >> 16;
-	higher++;
-
-	internResolution = higher;
 
 	sceneCaptureDepth = CreateDefaultSubobject<USceneCaptureComponent2D>(TEXT("SceneCaptureDepth"));
 	sceneCaptureDepth->SetupAttachment(OurCameraDepth);
@@ -62,32 +55,54 @@ ACustomScreenCapture::ACustomScreenCapture()
 void ACustomScreenCapture::BeginPlay()
 {
 	Super::BeginPlay();
+	basePathFolder = std::string(TCHAR_TO_UTF8(*outputFolderPath));
+
+	// Create necessary folders
+	fs::create_directories(basePathFolder);
+
+	// Go on with the file name
+	if (basePathFolder.back() != '/')
+		basePathFolder.append("/");
 
 #pragma region Get_Resolution_Power_of_2
 	// Resolution has to be a power of 2. This code finds the lowest RxR resolution which has equal or more pixel than set
-	uint32_t higher = std::max(resolutionX, resolutionY);
+	uint32_t higherX = resolutionX;
 
-	higher--;
-	higher |= higher >> 1;
-	higher |= higher >> 2;
-	higher |= higher >> 4;
-	higher |= higher >> 8;
-	higher |= higher >> 16;
-	higher++;
+	higherX--;
+	higherX |= higherX >> 1;
+	higherX |= higherX >> 2;
+	higherX |= higherX >> 4;
+	higherX |= higherX >> 8;
+	higherX |= higherX >> 16;
+	higherX++;
 
-	internResolution = higher;
+	internResolutionX = higherX;
+
+	uint32_t higherY = resolutionY;
+
+	higherY--;
+	higherY |= higherY >> 1;
+	higherY |= higherY >> 2;
+	higherY |= higherY >> 4;
+	higherY |= higherY >> 8;
+	higherY |= higherY >> 16;
+	higherY++;
+
+	internResolutionY = higherY;
 #pragma endregion
 
 	OurCameraDepth->FieldOfView = field_of_view;
+	OurCameraColor->FieldOfView = field_of_view;
+
 	OurCameraColor->SetRelativeLocation(colorCameraOffset);
 	
 	renderTargetDepth = NewObject<UTextureRenderTarget2D>();
-	renderTargetDepth->InitCustomFormat(internResolution, internResolution, EPixelFormat::PF_FloatRGBA, true);
+	renderTargetDepth->InitCustomFormat(internResolutionX, internResolutionY, EPixelFormat::PF_FloatRGBA, true);
 
 	renderTargetDepth->UpdateResourceImmediate();
 
 	renderTargetColor = NewObject<UTextureRenderTarget2D>();
-	renderTargetColor->InitCustomFormat(internResolution, internResolution, EPixelFormat::PF_B8G8R8A8, true);
+	renderTargetColor->InitCustomFormat(internResolutionX, internResolutionY, EPixelFormat::PF_B8G8R8A8, true);
 
 	renderTargetColor->UpdateResourceImmediate();
 
@@ -117,9 +132,12 @@ void ACustomScreenCapture::BeginPlay()
 	std::string strRotRoll;
 	std::string strRotYaw;
 
+	// Field of view (same for both cameras)
+	sprintf(targetBuffer, "%.3f", field_of_view);
+	std::string fov = std::string(targetBuffer);
+
 	// Get world location of Actor
 	FVector location = OurCameraDepth->GetComponentLocation();
-
 	sprintf(targetBuffer, "%.3f", location.X);
 	strPosX = std::string(targetBuffer);
 
@@ -140,41 +158,30 @@ void ACustomScreenCapture::BeginPlay()
 
 	sprintf(targetBuffer, "%.3f", rotation.Yaw);
 	strRotYaw = std::string(targetBuffer);
-
-	baseFilenameDepth = std::string(TCHAR_TO_UTF8(*outputFolderPath));
-
-	// Create necessary folders
-	fs::create_directories(baseFilenameDepth);
-
-	// Go on with the file name
-	if (baseFilenameDepth.back() != '/')
-	{
-		baseFilenameDepth.append("/");
-	}
-
+	
 	ARTW_WorldSettings* tempPtr = reinterpret_cast<ARTW_WorldSettings*>(GetWorldSettings());
 	sprintf(targetBuffer, "%.3f", tempPtr->frames_per_second);
 	std::string strFPS = std::string(targetBuffer);
 
-	metaData.open(baseFilenameDepth + "Metadata.txt");
+	json j;
+	j["fps"] = strFPS;
+	j["fov"] = fov;
+	j["depth_image"]["pos_x"] = strPosX;
+	j["depth_image"]["pos_y"] = strPosY;
+	j["depth_image"]["pos_z"] = strPosZ;
+	j["depth_image"]["rot_pitch"] = strRotPitch;
+	j["depth_image"]["rot_roll"] = strRotRoll;
+	j["depth_image"]["rot_yaw"] = strRotYaw;
+	j["depth_image"]["width"] = std::to_string(internResolutionX);
+	j["depth_image"]["height"] = std::to_string(internResolutionY);
 
-	metaData << "Frames per second: " << strFPS << "\n";
-
-	metaData << "Depth Position X: " << strPosX << "\n";
-	metaData << "Depth Position Y: " << strPosY << "\n";
-	metaData << "Depth Position Z: " << strPosZ << "\n";
-	
-	metaData << "Depth Rotation Pitch: " << strRotPitch << "\n";
-	metaData << "Depth Rotation Roll: " << strRotRoll << "\n";
-	metaData << "Depth Rotation Yaw: " << strRotYaw << "\n";
-
-	baseFilenameDepth += std::string("image");
+	baseFilenameDepth = basePathFolder + std::string("image");
 	baseFilenameDepth += std::string("_number_");
 
 	location = OurCameraColor->GetComponentLocation();
 
 	sprintf(targetBuffer, "%.3f", location.X);
-	strPosX += std::string(targetBuffer);
+	strPosX = std::string(targetBuffer);
 
 	sprintf(targetBuffer, "%.3f", location.Y);
 	strPosY = std::string(targetBuffer);
@@ -194,28 +201,20 @@ void ACustomScreenCapture::BeginPlay()
 	sprintf(targetBuffer, "%.3f", rotation.Yaw);
 	strRotYaw = std::string(targetBuffer);
 
-	baseFilenameColor = std::string(TCHAR_TO_UTF8(*outputFolderPath));
-
-	// Create necessary folders
-	fs::create_directories(baseFilenameColor);
-
-	// Go on with the file name
-	if (baseFilenameColor.back() != '/')
-	{
-		baseFilenameColor.append("/");
-	}
-
-	baseFilenameColor += std::string("image");
+	baseFilenameColor = basePathFolder + std::string("image");
 	baseFilenameColor += std::string("_number_");
 
-	metaData << "Color Position X: " << strPosX << "\n";
-	metaData << "Color Position Y: " << strPosY << "\n";
-	metaData << "Color Position Z: " << strPosZ << "\n";
+	j["color_image"]["pos_x"] = strPosX;
+	j["color_image"]["pos_y"] = strPosY;
+	j["color_image"]["pos_z"] = strPosZ;
+	j["color_image"]["rot_pitch"] = strRotPitch;
+	j["color_image"]["rot_roll"] = strRotRoll;
+	j["color_image"]["rot_yaw"] = strRotYaw;
+	j["color_image"]["width"] = std::to_string(internResolutionX);
+	j["color_image"]["height"] = std::to_string(internResolutionY);
 
-	metaData << "Color Rotation Pitch: " << strRotPitch << "\n";
-	metaData << "Color Rotation Roll: " << strRotRoll << "\n";
-	metaData << "Color Rotation Yaw: " << strRotYaw;
-
+	metaData.open(basePathFolder + "Metadata.json");
+	metaData << j.dump(2);
 	metaData.close();
 
 #pragma endregion
