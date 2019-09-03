@@ -166,14 +166,15 @@ void ACustomScreenCapture::BeginPlay()
 	json j;
 	j["fps"] = strFPS;
 	j["fov"] = fov;
+    j["width"] = std::to_string(internResolutionX);
+    j["height"] = std::to_string(internResolutionY);
+
 	j["depth_image"]["pos_x"] = strPosX;
 	j["depth_image"]["pos_y"] = strPosY;
 	j["depth_image"]["pos_z"] = strPosZ;
 	j["depth_image"]["rot_pitch"] = strRotPitch;
 	j["depth_image"]["rot_roll"] = strRotRoll;
 	j["depth_image"]["rot_yaw"] = strRotYaw;
-	j["depth_image"]["width"] = std::to_string(internResolutionX);
-	j["depth_image"]["height"] = std::to_string(internResolutionY);
 
 	baseFilenameDepth = basePathFolder + std::string("image");
 	baseFilenameDepth += std::string("_number_");
@@ -210,9 +211,7 @@ void ACustomScreenCapture::BeginPlay()
 	j["color_image"]["rot_pitch"] = strRotPitch;
 	j["color_image"]["rot_roll"] = strRotRoll;
 	j["color_image"]["rot_yaw"] = strRotYaw;
-	j["color_image"]["width"] = std::to_string(internResolutionX);
-	j["color_image"]["height"] = std::to_string(internResolutionY);
-
+	
 	metaData.open(basePathFolder + "Metadata.json");
 	metaData << j.dump(2);
 	metaData.close();
