@@ -245,17 +245,17 @@ void ACustomScreenCapture::SaveTextureDepthmap()
 		RenderTargetResource->ReadFloat16Pixels(buffer16);
 
 		std::string fileName = baseFilenameDepth;
-		fileName += sCounter + std::string(".raw32f");
+		fileName += sCounter + std::string(".depth16");
 		std::ofstream targetFileDepth(fileName, std::ofstream::binary);
 		
 		depthVector.resize(buffer16.Num());
 
 		for (int32_t index = 0; index < buffer16.Num(); index++)
 		{
-			depthVector[index] = buffer16[index].R.GetFloat();
+			depthVector[index] = static_cast<uint16_t>(buffer16[index].R.GetFloat() * 10 + 0.5);
 		}
 
-		targetFileDepth.write(reinterpret_cast<char*>(&depthVector[0]), depthVector.size() * sizeof(depthVector[0]));
+		targetFileDepth.write(reinterpret_cast<char*>(depthVector.data()), depthVector.size() * sizeof(decltype(depthVector)::value_type));
 		targetFileDepth.close();
 	}
 }
@@ -270,7 +270,7 @@ void ACustomScreenCapture::SaveTextureColor()
 		RenderTargetResource->ReadPixels(buffer8);
 
 		std::string fileName = baseFilenameColor;
-		fileName += sCounter + std::string(".raw8");
+		fileName += sCounter + std::string(".bgr8");
 		std::ofstream targetFileColor(fileName, std::ofstream::binary);
 		
 		targetFileColor.write(reinterpret_cast<char*>(buffer8.GetData()), buffer8.Num() * sizeof(FColor));

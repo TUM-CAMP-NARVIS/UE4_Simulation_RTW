@@ -63,7 +63,7 @@ protected:
 	class USceneCaptureComponent2D* sceneCaptureColor;
 	class UCameraComponent* OurCameraColor;
 
-	std::vector<float> depthVector;
+	std::vector<uint16_t> depthVector;
 
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
