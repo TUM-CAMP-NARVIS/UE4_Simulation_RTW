@@ -251,6 +251,41 @@ void ACustomScreenCapture::BeginPlay()
     j["color_image"]["rot_Z"] = strRotZ;
     j["color_image"]["rot_W"] = strRotW;
 
+	// Get world location of Actor
+	location = colorCameraTranslation;
+	sprintf(targetBuffer, "%.3f", location.X);
+	strPosX = std::string(targetBuffer);
+
+	sprintf(targetBuffer, "%.3f", location.Y);
+	strPosY = std::string(targetBuffer);
+
+	sprintf(targetBuffer, "%.3f", location.Z);
+	strPosZ = std::string(targetBuffer);
+
+	// Get yaw pitch roll of actor
+	quaternion = colorCameraRotation;
+
+	sprintf(targetBuffer, "%.3f", quaternion.X);
+	strRotX = std::string(targetBuffer);
+
+	sprintf(targetBuffer, "%.3f", quaternion.Y);
+	strRotY = std::string(targetBuffer);
+
+	sprintf(targetBuffer, "%.3f", quaternion.Z);
+	strRotZ = std::string(targetBuffer);
+
+	sprintf(targetBuffer, "%.3f", quaternion.W);
+	strRotW = std::string(targetBuffer);
+
+	j["color_image"]["rel_pos_x"] = strPosX;
+	j["color_image"]["rel_pos_y"] = strPosY;
+	j["color_image"]["rel_pos_z"] = strPosZ;
+
+	j["color_image"]["rel_rot_X"] = strRotX;
+	j["color_image"]["rel_rot_Y"] = strRotY;
+	j["color_image"]["rel_rot_Z"] = strRotZ;
+	j["color_image"]["rel_rot_W"] = strRotW;
+
 	metaData.open(basePathFolder + "Metadata.json");
 	metaData << j.dump(2);
 	metaData.close();
