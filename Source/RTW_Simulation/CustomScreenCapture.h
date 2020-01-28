@@ -32,14 +32,17 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Output Information", meta = (ClampMin = "32", ClampMax = "4096", UIMin = "32", UIMax = "4096"))
 		uint32 resolutionY;
 
-	UPROPERTY(EditAnywhere, Category = "Output Information", meta = (ClampMin = "20.0", ClampMax = "179.9", UIMin = "20.0", UIMax = "179.9"))
+	UPROPERTY(EditAnywhere, Category = "Output Information", meta = (ClampMin = "20.0", ClampMax = "170.0", UIMin = "20.0", UIMax = "179.9"))
 		float field_of_view;
 
 	UPROPERTY(EditAnywhere, Category = "Output Information")
 		FString outputFolderPath;
 
-	UPROPERTY(EditAnywhere, Category = "Stereo Setup (X = Front, Y = Right, Z = Top)")
-		FVector colorCameraOffset;
+	UPROPERTY(EditAnywhere, Category = "Stereo Setup")
+		FVector colorCameraTranslation;
+
+    UPROPERTY(EditAnywhere, Category = "Stereo Setup")
+        FQuat colorCameraRotation;
 protected:
 	// Member variables
 	

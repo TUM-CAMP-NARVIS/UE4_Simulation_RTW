@@ -3,17 +3,10 @@
 #include "CustomScreenCapture.h"
 #include "RTW_WorldSettings.h"
 #include "nlohmann/json.hpp"
+#include "HAL/PlatformFilemanager.h"
+#include "GenericPlatform/GenericPlatformFile.h"
 
 #include <fstream>
-
-#if __cplusplus < 201703L // If the version of C++ is less than 17
-	// It was still in the experimental:: namespace
-#include <experimental/filesystem>
-namespace fs = std::experimental::filesystem;
-#else
-#include <filesystem>
-namespace fs = std::filesystem;
-#endif
 
 using json = nlohmann::json;
 
@@ -23,7 +16,8 @@ ACustomScreenCapture::ACustomScreenCapture()
 	, resolutionY(1024)
 	, field_of_view(90.0f)
 	, outputFolderPath(TEXT("."))
-	, colorCameraOffset(0.0f, 0.0f, 0.0f)
+	, colorCameraTranslation(0.0f, 0.0f, 0.0f)
+    , colorCameraRotation(0., 0., 0., 1.)
 	, counterImage(0)
 	, baseFilenameDepth("")
 	, baseFilenameColor("")
@@ -46,7 +40,7 @@ ACustomScreenCapture::ACustomScreenCapture()
 
 	sceneCaptureDepth = CreateDefaultSubobject<USceneCaptureComponent2D>(TEXT("SceneCaptureDepth"));
 	sceneCaptureDepth->SetupAttachment(OurCameraDepth);
-
+    
 	sceneCaptureColor = CreateDefaultSubobject<USceneCaptureComponent2D>(TEXT("SceneCaptureColor"));
 	sceneCaptureColor->SetupAttachment(OurCameraColor);
 }
@@ -56,9 +50,9 @@ void ACustomScreenCapture::BeginPlay()
 {
 	Super::BeginPlay();
 	basePathFolder = std::string(TCHAR_TO_UTF8(*outputFolderPath));
-
-	// Create necessary folders
-	fs::create_directories(basePathFolder);
+	
+	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+	PlatformFile.CreateDirectory(*outputFolderPath);
 
 	// Go on with the file name
 	if (basePathFolder.back() != '/')
@@ -93,9 +87,12 @@ void ACustomScreenCapture::BeginPlay()
 
 	OurCameraDepth->FieldOfView = field_of_view;
 	OurCameraColor->FieldOfView = field_of_view;
+    sceneCaptureColor->FOVAngle = field_of_view;
+    sceneCaptureDepth->FOVAngle = field_of_view;
 
-	OurCameraColor->SetRelativeLocation(colorCameraOffset);
-	
+	OurCameraColor->SetRelativeLocation(colorCameraTranslation);
+    OurCameraColor->SetRelativeRotation(colorCameraRotation);
+
 	renderTargetDepth = NewObject<UTextureRenderTarget2D>();
 	renderTargetDepth->InitCustomFormat(internResolutionX, internResolutionY, EPixelFormat::PF_FloatRGBA, true);
 
@@ -110,7 +107,7 @@ void ACustomScreenCapture::BeginPlay()
 	sceneCaptureDepth->TextureTarget = renderTargetDepth;
 	sceneCaptureDepth->bCaptureEveryFrame = true;
 	
-	sceneCaptureColor->CaptureSource = SCS_FinalColorLDR;
+    sceneCaptureColor->CaptureSource = SCS_FinalColorLDR;
 	sceneCaptureColor->TextureTarget = renderTargetColor;
 	sceneCaptureColor->bCaptureEveryFrame = true;
 
@@ -132,6 +129,12 @@ void ACustomScreenCapture::BeginPlay()
 	std::string strRotRoll;
 	std::string strRotYaw;
 
+    std::string strRotX;
+    std::string strRotY;
+    std::string strRotZ;
+    std::string strRotW;
+
+
 	// Field of view (same for both cameras)
 	sprintf(targetBuffer, "%.3f", field_of_view);
 	std::string fov = std::string(targetBuffer);
@@ -149,6 +152,19 @@ void ACustomScreenCapture::BeginPlay()
 
 	// Get yaw pitch roll of actor
 	FRotator rotation = OurCameraDepth->GetComponentRotation();
+    FQuat quaternion = rotation.Quaternion();
+    
+    sprintf(targetBuffer, "%.3f", quaternion.X);
+    strRotX = std::string(targetBuffer);
+
+    sprintf(targetBuffer, "%.3f", quaternion.Y);
+    strRotY = std::string(targetBuffer);
+
+    sprintf(targetBuffer, "%.3f", quaternion.Z);
+    strRotZ = std::string(targetBuffer);
+
+    sprintf(targetBuffer, "%.3f", quaternion.W);
+    strRotW = std::string(targetBuffer);
 
 	sprintf(targetBuffer, "%.3f", rotation.Pitch);
 	strRotPitch = std::string(targetBuffer);
@@ -176,6 +192,11 @@ void ACustomScreenCapture::BeginPlay()
 	j["depth_image"]["rot_roll"] = strRotRoll;
 	j["depth_image"]["rot_yaw"] = strRotYaw;
 
+    j["depth_image"]["rot_X"] = strRotX;
+    j["depth_image"]["rot_Y"] = strRotY;
+    j["depth_image"]["rot_Z"] = strRotZ;
+    j["depth_image"]["rot_W"] = strRotW;
+
 	baseFilenameDepth = basePathFolder + std::string("image");
 	baseFilenameDepth += std::string("_number_");
 
@@ -192,6 +213,19 @@ void ACustomScreenCapture::BeginPlay()
 
 	// Get yaw pitch roll of actor
 	rotation = OurCameraColor->GetComponentRotation();
+    quaternion = rotation.Quaternion();
+
+    sprintf(targetBuffer, "%.3f", quaternion.X);
+    strRotX = std::string(targetBuffer);
+
+    sprintf(targetBuffer, "%.3f", quaternion.Y);
+    strRotY = std::string(targetBuffer);
+
+    sprintf(targetBuffer, "%.3f", quaternion.Z);
+    strRotZ = std::string(targetBuffer);
+
+    sprintf(targetBuffer, "%.3f", quaternion.W);
+    strRotW = std::string(targetBuffer);
 
 	sprintf(targetBuffer, "%.3f", rotation.Pitch);
 	strRotPitch = std::string(targetBuffer);
@@ -211,7 +245,12 @@ void ACustomScreenCapture::BeginPlay()
 	j["color_image"]["rot_pitch"] = strRotPitch;
 	j["color_image"]["rot_roll"] = strRotRoll;
 	j["color_image"]["rot_yaw"] = strRotYaw;
-	
+
+    j["color_image"]["rot_X"] = strRotX;
+    j["color_image"]["rot_Y"] = strRotY;
+    j["color_image"]["rot_Z"] = strRotZ;
+    j["color_image"]["rot_W"] = strRotW;
+
 	metaData.open(basePathFolder + "Metadata.json");
 	metaData << j.dump(2);
 	metaData.close();
